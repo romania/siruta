@@ -1,0 +1,19 @@
+{
+  "name": "siruta",
+  "version": "1.0.0",
+  "private": true,
+  "license": "WTFPL",
+  "scripts": {
+    "update": "node scripts/update/cli.js update",
+    "check": "node scripts/update/cli.js check",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "csv-parse": "^6.2.1",
+    "yaml": "^2.9.1"
+  }
+}

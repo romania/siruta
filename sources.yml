@@ -1,0 +1,6 @@
+dataset:
+  discovery_url: https://data.gov.ro/api/3/action/package_search
+  organization: institutul-national-de-statistica
+  title_pattern: ^SIRUTA_s1[ _-](?<year>\d{4})$
+  resource_format: CSV
+  license: CC-BY-4.0
