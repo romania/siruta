@@ -3,7 +3,6 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 
 const OFFICIAL_HEADER = 'SIRUTA;DENLOC;CODP;JUD;SIRSUP;TIP;NIV;MED;REGIUNE;FSJ;NUTS;LAU';
-const FIXTURE_HEADER = 'SIRUTA;DENLOC';
 const ALLOWED_CONTENT_TYPES = new Set(['text/csv', 'application/octet-stream']);
 
 async function downloadCSV(source, fetchImpl = fetch) {
@@ -31,10 +30,7 @@ async function downloadCSV(source, fetchImpl = fetch) {
   }
 
   const firstLine = text.split(/\r?\n/, 1)[0];
-  assert.ok(
-    firstLine === OFFICIAL_HEADER || firstLine === FIXTURE_HEADER,
-    `Antet CSV neașteptat: ${firstLine}`
-  );
+  assert.equal(firstLine, OFFICIAL_HEADER, `Antet CSV neașteptat: ${firstLine}`);
 
   return { bytes, sha256 };
 }

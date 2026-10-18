@@ -13,12 +13,14 @@ function fakeBinaryFetch(bytes, contentType, status = 200) {
 }
 
 test('downloads CSV and hashes the exact bytes', async () => {
-  const bytes = Buffer.from('SIRUTA;DENLOC\r\n10;JUDEŢUL ALBA\r\n');
+  const bytes = Buffer.from(
+    'SIRUTA;DENLOC;CODP;JUD;SIRSUP;TIP;NIV;MED;REGIUNE;FSJ;NUTS;LAU\r\n10;JUDEŢUL ALBA;0;1;1;40;1;0;7;1;RO121;\r\n'
+  );
   const result = await downloadCSV(
     { url: 'https://example.test/siruta.csv' },
     fakeBinaryFetch(bytes, 'text/csv')
   );
-  assert.equal(result.sha256, '6f048d4c287e39575918e8cb9d7c4821bb22a7cbb30ca3c3fcd7c76c626066d7');
+  assert.equal(result.sha256, '0e14f9e2b5bc697609a3662e38a48dde6edf15c1661e76397fc832bbe9d369e4');
   assert.deepEqual(result.bytes, bytes);
 });
 
@@ -45,11 +47,11 @@ test('rejects a 200 HTML response before parsing', async () => {
   );
 });
 
-test('rejects a CSV response with an unexpected header', async () => {
+test('rejects a CSV response with a two-column header', async () => {
   await assert.rejects(
     downloadCSV(
       { url: 'https://example.test/siruta.csv' },
-      fakeBinaryFetch(Buffer.from('ID;NUME\r\n10;ALBA\r\n'), 'text/csv')
+      fakeBinaryFetch(Buffer.from('SIRUTA;DENLOC\r\n10;JUDEŢUL ALBA\r\n'), 'text/csv')
     ),
     /antet/i
   );
