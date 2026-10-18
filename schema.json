@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SirutaRecord",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "siruta",
+    "nume",
+    "cod_postal",
+    "judet_cod_numeric",
+    "siruta_parinte",
+    "tip",
+    "nivel",
+    "mediu",
+    "regiune",
+    "fsj",
+    "nuts",
+    "lau"
+  ],
+  "properties": {
+    "siruta": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nume": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cod_postal": {
+      "type": "string",
+      "minLength": 1
+    },
+    "judet_cod_numeric": {
+      "type": "string",
+      "minLength": 1
+    },
+    "siruta_parinte": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tip": {
+      "type": "integer"
+    },
+    "nivel": {
+      "type": "integer",
+      "enum": [1, 2, 3]
+    },
+    "mediu": {
+      "type": "integer"
+    },
+    "regiune": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fsj": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nuts": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lau": {
+      "type": ["string", "null"]
+    }
+  }
+}
