@@ -42,10 +42,16 @@ test('normalizes the small fixture into canonical sorted records', () => {
     )
   );
 
-  const sector = records.find((row) => row.siruta === '179141');
+  const sector = records.find((row) => row.siruta === '101790');
   assert.equal(sector.tip, 6);
   assert.equal(sector.nivel, 3);
-  assert.equal(sector.nume, 'BUCUREȘTI SECTORUL 1');
+  assert.equal(sector.nume, 'SECTOR SINTETIC ALBA IULIA');
+  assert.equal(sector.siruta_parinte, '1017');
+  assert.equal(sector.judet_cod_numeric, '1');
+  assert.deepEqual(
+    { regiune: sector.regiune, fsj: sector.fsj, nuts: sector.nuts },
+    { regiune: '7', fsj: '1', nuts: 'RO121' }
+  );
 });
 
 test('rejects duplicate SIRUTA codes', () => {
