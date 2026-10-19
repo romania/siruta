@@ -1,0 +1,86 @@
+name: Update SIRUTA data
+on:
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Save previous metadata
+        run: cp data/latest/metadata.json "$RUNNER_TEMP/metadata-before.json"
+      - run: npm test
+      - run: npm run update
+      - run: npm test
+      - run: npm run check
+      - name: Detect changes
+        id: diff
+        run: |
+          if git diff --quiet && [ -z "$(git status --porcelain --untracked-files=all)" ]; then
+            echo "Upstream unchanged; nothing to publish."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Update changelog
+        if: steps.diff.outputs.changed == 'true'
+        run: node scripts/update/changelog.js CHANGELOG.md "$RUNNER_TEMP/metadata-before.json" data/latest/metadata.json
+      - name: Commit changes
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "automation/update-data-${GITHUB_RUN_ID}"
+          git add -A
+          git commit -m "data: update SIRUTA dataset"
+      - name: Push branch
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh auth setup-git
+          git push origin "HEAD:refs/heads/automation/update-data-${GITHUB_RUN_ID}"
+      - name: Build pull request body
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          node - "$RUNNER_TEMP/metadata-before.json" data/latest/metadata.json "$RUNNER_TEMP/pr-body.md" <<'NODE'
+          const fs = require('node:fs');
+          const [beforePath, afterPath, bodyPath] = process.argv.slice(2);
+          const before = JSON.parse(fs.readFileSync(beforePath, 'utf8'));
+          const after = JSON.parse(fs.readFileSync(afterPath, 'utf8'));
+          const t = (m) => `${m.totaluri.toate} total (${m.totaluri.judete} județe, ${m.totaluri.uat} UAT, ${m.totaluri.localitati} localități)`;
+          fs.writeFileSync(bodyPath, [
+            'Actualizare automată a setului de date SIRUTA din sursa oficială (`data.gov.ro`).',
+            '',
+            `- Ediție: \`${before.editie}\` → \`${after.editie}\``,
+            `- Modificat în sursă: \`${after.sursa.modified_at}\``,
+            `- SHA-256 anterior: \`${before.sursa.sha256}\``,
+            `- SHA-256 nou: \`${after.sursa.sha256}\``,
+            `- Totaluri anterioare: ${t(before)}`,
+            `- Totaluri noi: ${t(after)}`,
+            '',
+            'Verificat în workflow: `npm test`, `npm run update`, `npm test`, `npm run check`.',
+            '',
+          ].join('\n'));
+          NODE
+      - name: Open pull request
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr create \
+            --base main \
+            --head "automation/update-data-${GITHUB_RUN_ID}" \
+            --title "data: update SIRUTA dataset" \
+            --body-file "$RUNNER_TEMP/pr-body.md"
