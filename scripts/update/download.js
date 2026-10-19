@@ -1,13 +1,18 @@
 'use strict';
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
+const { fetchWithDiagnostics } = require('./network');
 
 const OFFICIAL_HEADER = 'SIRUTA;DENLOC;CODP;JUD;SIRSUP;TIP;NIV;MED;REGIUNE;FSJ;NUTS;LAU';
 const ALLOWED_CONTENT_TYPES = new Set(['text/csv', 'application/octet-stream']);
 
 async function downloadCSV(source, fetchImpl = fetch) {
   assert.ok(source?.url, 'URL-ul sursei CSV este obligatoriu.');
-  const response = await fetchImpl(source.url);
+  const response = await fetchWithDiagnostics(
+    fetchImpl,
+    source.url,
+    'Descărcarea CSV'
+  );
   assert.ok(response.ok, `Descărcarea CSV a eșuat cu status ${response.status}.`);
 
   const contentType = (response.headers.get('content-type') || '')

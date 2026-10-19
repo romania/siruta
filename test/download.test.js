@@ -47,6 +47,29 @@ test('rejects a 200 HTML response before parsing', async () => {
   );
 });
 
+test('reports the CSV operation, request URL and nested cause when fetch rejects', async () => {
+  const url = 'https://example.test/siruta.csv';
+  const nested = Object.assign(new Error('Connect Timeout Error'), {
+    code: 'UND_ERR_CONNECT_TIMEOUT',
+  });
+  const rejection = new TypeError('fetch failed', { cause: nested });
+
+  await assert.rejects(
+    downloadCSV({ url }, async () => {
+      throw rejection;
+    }),
+    error => {
+      assert.match(error.message, /Descărcarea CSV/);
+      assert.ok(error.message.includes(url));
+      assert.match(error.message, /fetch failed/);
+      assert.match(error.message, /UND_ERR_CONNECT_TIMEOUT/);
+      assert.match(error.message, /Connect Timeout Error/);
+      assert.equal(error.cause, rejection);
+      return true;
+    }
+  );
+});
+
 test('rejects a CSV response with a two-column header', async () => {
   await assert.rejects(
     downloadCSV(

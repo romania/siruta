@@ -1,5 +1,6 @@
 'use strict';
 const assert = require('node:assert/strict');
+const { fetchWithDiagnostics } = require('./network');
 
 async function discoverLatest(manifest, fetchImpl = fetch) {
   const config = manifest?.dataset;
@@ -14,7 +15,11 @@ async function discoverLatest(manifest, fetchImpl = fetch) {
     url.searchParams.set('start', String(start));
     url.searchParams.set('rows', String(rows));
 
-    const response = await fetchImpl(url.toString());
+    const response = await fetchWithDiagnostics(
+      fetchImpl,
+      url.toString(),
+      'Descoperirea CKAN'
+    );
     assert.ok(response.ok, `Descoperirea CKAN a eșuat cu status ${response.status}.`);
     const payload = await response.json();
     assert.equal(payload?.success, true, 'Răspunsul CKAN nu indică succes.');

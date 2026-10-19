@@ -151,6 +151,32 @@ test('rejects a truncated CKAN result before selecting a dataset', async () => {
   await assert.rejects(discoverLatest(manifest, pagedFetch(pages)), /trunchiat|inconsistent/i);
 });
 
+test('reports the CKAN operation, request URL and nested cause when fetch rejects', async () => {
+  const nested = Object.assign(new Error('Connect Timeout Error'), {
+    code: 'UND_ERR_CONNECT_TIMEOUT',
+  });
+  const rejection = new TypeError('fetch failed', { cause: nested });
+  const expectedUrl = new URL(manifest.dataset.discoveryUrl);
+  expectedUrl.searchParams.set('fq', `organization:${manifest.dataset.organization}`);
+  expectedUrl.searchParams.set('start', '0');
+  expectedUrl.searchParams.set('rows', '100');
+
+  await assert.rejects(
+    discoverLatest(manifest, async () => {
+      throw rejection;
+    }),
+    error => {
+      assert.match(error.message, /Descoperirea CKAN/);
+      assert.ok(error.message.includes(expectedUrl.toString()));
+      assert.match(error.message, /fetch failed/);
+      assert.match(error.message, /UND_ERR_CONNECT_TIMEOUT/);
+      assert.match(error.message, /Connect Timeout Error/);
+      assert.equal(error.cause, rejection);
+      return true;
+    }
+  );
+});
+
 test('rejects two equally current matching datasets', async () => {
   const response = ckanResponse([dataset(2026, 'a'), dataset(2026, 'b')]);
   await assert.rejects(
