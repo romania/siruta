@@ -1,0 +1,8 @@
+* text=auto eol=lf
+data/latest/** text eol=lf
+sources.yml text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+sources/current/** -text -eol binary

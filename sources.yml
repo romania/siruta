@@ -4,3 +4,20 @@ dataset:
   title_pattern: ^SIRUTA_s1[ _-](?<year>\d{4})$
   resource_format: CSV
   license: CC-BY-4.0
+  current:
+    title: SIRUTA_s1 2026
+    year: 2026
+    dataset_id: 721c9059-5f87-4c79-9854-a1d5c18f58d5
+    resource_id: dac903f0-32b5-489a-89e7-2c80d96cf68d
+    url: https://data.gov.ro/dataset/721c9059-5f87-4c79-9854-a1d5c18f58d5/resource/dac903f0-32b5-489a-89e7-2c80d96cf68d/download/siruta_s1_2026.csv
+    license: CC BY 4.0
+    license_url: https://creativecommons.org/licenses/by/4.0/
+    modified_at: 2026-08-11T11:42:48.571937
+    downloaded_at: 2026-10-19T00:07:07.548Z
+    bytes: 892897
+    sha256: f443e49af2f9c9dce8ea515ae53090a18fb476547466b6cd804051424eaf72c6
+    transformari:
+      - decodare UTF-8 strictă
+      - Unicode NFC și înlocuire Ș/Ț cu virgulă
+      - coduri păstrate ca șiruri
+      - sortare numerică după cod SIRUTA
