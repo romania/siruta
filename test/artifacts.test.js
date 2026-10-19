@@ -49,7 +49,7 @@ function setup(bytes = fs.readFileSync(FIXTURE), overrides = {}) {
     size: bytes.length,
     sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
     bytes,
-    report: validateDataset(records),
+    report: validateDataset(records, { profile: 'fixture' }),
     sourcesYml: SOURCES_YML,
     ...overrides,
   };

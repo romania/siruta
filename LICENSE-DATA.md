@@ -12,12 +12,8 @@ Acest depozit separă explicit regimul juridic al datelor de cel al codului surs
 ## Proveniența oficială a datelor
 
 - **Instituția sursă:** Institutul Național de Statistică (INS) — organizația `institutul-national-de-statistica` pe portalul național `data.gov.ro`
-- **Set de date (CKAN `dataset_id`):** `721c9059-5f87-4c79-9854-a1d5c18f58d5` (`SIRUTA_s1 2026`)
-- **Pagina setului de date:** https://data.gov.ro/dataset/721c9059-5f87-4c79-9854-a1d5c18f58d5
-- **Resursa oficială (CKAN `resource_id`):** `dac903f0-32b5-489a-89e7-2c80d96cf68d`
-- **URL oficial al resursei CSV:** https://data.gov.ro/dataset/721c9059-5f87-4c79-9854-a1d5c18f58d5/resource/dac903f0-32b5-489a-89e7-2c80d96cf68d/download/siruta_s1_2026.csv
-- **Data modificării în sursă (`modified_at`):** `2026-08-11T11:42:48.571937`
-- **Amprenta SHA-256 a sursei brute (`sources/current/siruta.csv`):** `f443e49af2f9c9dce8ea515ae53090a18fb476547466b6cd804051424eaf72c6` (`892897` octeți)
+- **Descoperire:** API-ul CKAN `package_search`, filtrat după organizația INS și regulile stabile din [`sources.yml`](./sources.yml)
+- **Versiunea și resursa oficială curente:** identificatorii CKAN, URL-ul resursei, data modificării, dimensiunea și SHA-256 sunt în [`data/latest/metadata.json`](./data/latest/metadata.json); sursa rezolvată este oglindită în [`sources.yml`](./sources.yml)
 - **Licența declarată de sursă:** Creative Commons Attribution 4.0 International (`CC BY 4.0`)
 - **Textul complet al licenței CC BY 4.0:** https://creativecommons.org/licenses/by/4.0/
 
@@ -27,7 +23,7 @@ Acest depozit separă explicit regimul juridic al datelor de cel al codului surs
 
 La reutilizarea sau redistribuirea fișierelor din `data/latest/*` ori `sources/current/*`, includeți următoarea mențiune de atribuire:
 
-> Sursa datelor: **Institutul Național de Statistică (INS)** — *SIRUTA_s1 2026*, publicat pe `data.gov.ro` (https://data.gov.ro/dataset/721c9059-5f87-4c79-9854-a1d5c18f58d5/resource/dac903f0-32b5-489a-89e7-2c80d96cf68d/download/siruta_s1_2026.csv), sub licența [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
+> Sursa datelor: **Institutul Național de Statistică (INS)** — registrul *SIRUTA S1*, publicat pe `data.gov.ro`; versiunea și resursa oficială sunt identificate în [`data/latest/metadata.json`](./data/latest/metadata.json) și [`sources.yml`](./sources.yml), sub licența [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
 
 Conform termenilor CC BY 4.0, utilizatorii trebuie să indice dacă au fost aduse modificări față de fișierul original. Fișierele din `data/latest/*` aplică următoarele transformări tehnice deterministe asupra fișierului original `sources/current/siruta.csv`:
 

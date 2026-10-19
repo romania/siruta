@@ -8,6 +8,7 @@ const path = require('node:path');
 const test = require('node:test');
 const YAML = require('yaml');
 const { runCheck, runUpdate } = require('../scripts/update/pipeline');
+const { validateDataset } = require('../scripts/update/validate');
 
 const FIXTURE_BYTES = fs.readFileSync(path.join(__dirname, 'fixtures', 'siruta-small.csv'));
 const CLI = path.join(__dirname, '..', 'scripts', 'update', 'cli.js');
@@ -23,6 +24,7 @@ const SOURCES_YML = [
 ].join('\n');
 const MODIFIED_AT = '2026-08-11T11:42:48.571937';
 const CSV_URL = 'https://example.test/siruta_s1_2026.csv';
+const fixtureValidation = records => validateDataset(records, { profile: 'fixture' });
 
 function makeRoot(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'siruta-pipeline-'));
@@ -39,6 +41,7 @@ function makeFetch(state) {
       return new Response(JSON.stringify({
         success: true,
         result: {
+          count: 1,
           results: [{
             id: 'dataset-2026',
             title: 'SIRUTA_s1 2026',
@@ -95,7 +98,8 @@ test('update writes every artifact, sources.yml last, and leaves no temporary pa
     },
   };
   const result = await runUpdate({
-    root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z'), fs: fsImpl,
+    root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z'),
+    validate: fixtureValidation, fs: fsImpl,
   });
 
   assert.deepEqual(result.report.totaluri, { toate: 5, judete: 1, uat: 2, localitati: 2 });
@@ -114,9 +118,15 @@ test('update writes every artifact, sources.yml last, and leaves no temporary pa
 
 test('an unchanged source checksum reuses the previous downloaded_at and is byte-stable', async t => {
   const root = makeRoot(t);
-  await runUpdate({ root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z') });
+  await runUpdate({
+    root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z'),
+    validate: fixtureValidation,
+  });
   const before = snapshot(root);
-  await runUpdate({ root, fetchImpl: makeFetch({}), now: clock('2027-01-01T00:00:00.000Z') });
+  await runUpdate({
+    root, fetchImpl: makeFetch({}), now: clock('2027-01-01T00:00:00.000Z'),
+    validate: fixtureValidation,
+  });
   const after = snapshot(root);
   for (const [name, entry] of before) assert.equal(after.get(name).bytes, entry.bytes, name);
   assert.equal(JSON.parse(read(root, 'data/latest/metadata.json')).sursa.downloaded_at, '2026-10-19T00:00:00.000Z');
@@ -124,10 +134,16 @@ test('an unchanged source checksum reuses the previous downloaded_at and is byte
 
 test('changed source bytes with a fixed modifiedAt change metadata and set a new downloaded_at', async t => {
   const root = makeRoot(t);
-  await runUpdate({ root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z') });
+  await runUpdate({
+    root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z'),
+    validate: fixtureValidation,
+  });
   const before = JSON.parse(read(root, 'data/latest/metadata.json'));
   const changed = Buffer.concat([FIXTURE_BYTES, Buffer.from('1100;SATUL NOU;0;1;1017;10;3;1;7;1;RO121;\n')]);
-  await runUpdate({ root, fetchImpl: makeFetch({ bytes: changed }), now: clock('2026-11-01T08:00:00.000Z') });
+  await runUpdate({
+    root, fetchImpl: makeFetch({ bytes: changed }), now: clock('2026-11-01T08:00:00.000Z'),
+    validate: fixtureValidation,
+  });
   const after = JSON.parse(read(root, 'data/latest/metadata.json'));
   assert.equal(after.sursa.modified_at, before.sursa.modified_at);
   assert.notEqual(after.sursa.sha256, before.sursa.sha256);
@@ -152,6 +168,24 @@ test('a throwing validator leaves existing artifacts untouched and cleans tempor
   assert.equal(fs.existsSync(path.join(root, '.tmp')), false);
 });
 
+test('the pipeline uses strict production validation and rejects an incomplete registry before writes', async t => {
+  const root = makeRoot(t);
+  seedExisting(root);
+  const before = snapshot(root);
+
+  await assert.rejects(
+    runUpdate({
+      root,
+      fetchImpl: makeFetch({}),
+      now: clock('2026-10-19T00:00:00.000Z'),
+    }),
+    /42.*rădăcini|complet/i
+  );
+
+  assert.deepEqual(snapshot(root), before);
+  assert.equal(fs.existsSync(path.join(root, '.tmp')), false);
+});
+
 test('an invalid hierarchy from the real validator leaves existing artifacts untouched', async t => {
   const root = makeRoot(t);
   seedExisting(root);
@@ -160,7 +194,10 @@ test('an invalid hierarchy from the real validator leaves existing artifacts unt
   const broken = Buffer.from(original.replace('510005;1;1017;9;', '510005;1;999999;9;'));
   assert.notEqual(broken.toString('utf8'), original);
   await assert.rejects(
-    runUpdate({ root, fetchImpl: makeFetch({ bytes: broken }), now: clock('2026-10-19T00:00:00.000Z') }),
+    runUpdate({
+      root, fetchImpl: makeFetch({ bytes: broken }), now: clock('2026-10-19T00:00:00.000Z'),
+      validate: fixtureValidation,
+    }),
     /părinte inexistent/
   );
   assert.deepEqual(snapshot(root), before);
@@ -175,6 +212,7 @@ test('a non-official header is rejected before any tracked write', async t => {
       root,
       fetchImpl: makeFetch({ bytes: Buffer.from('SIRUTA;DENLOC\n10;ALBA\n') }),
       now: clock('2026-10-19T00:00:00.000Z'),
+      validate: fixtureValidation,
     }),
     /antet/i
   );
@@ -193,7 +231,10 @@ test('a failure while replacing sources.yml rolls data/latest and sources/curren
     },
   };
   await assert.rejects(
-    runUpdate({ root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z'), fs: fsImpl }),
+    runUpdate({
+      root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z'),
+      validate: fixtureValidation, fs: fsImpl,
+    }),
     /rename eșuat/
   );
   assert.deepEqual(snapshot(root), before);
@@ -202,7 +243,10 @@ test('a failure while replacing sources.yml rolls data/latest and sources/curren
 
 test('check passes on an up-to-date repository without changing any file', async t => {
   const root = makeRoot(t);
-  await runUpdate({ root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z') });
+  await runUpdate({
+    root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z'),
+    validate: fixtureValidation,
+  });
   const before = snapshot(root);
   const writes = [];
   const fsImpl = {
@@ -212,7 +256,8 @@ test('check passes on an up-to-date repository without changing any file', async
     renameSync() { throw new Error('check nu are voie să redenumească'); },
   };
   const result = await runCheck({
-    root, fetchImpl: makeFetch({}), now: clock('2027-01-01T00:00:00.000Z'), fs: fsImpl,
+    root, fetchImpl: makeFetch({}), now: clock('2027-01-01T00:00:00.000Z'),
+    validate: fixtureValidation, fs: fsImpl,
   });
   assert.equal(result.ok, true);
   assert.deepEqual(result.problems, []);
@@ -226,11 +271,15 @@ test('check passes on an up-to-date repository without changing any file', async
 
 test('check reports changed upstream bytes even when modifiedAt is fixed, and does not write', async t => {
   const root = makeRoot(t);
-  await runUpdate({ root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z') });
+  await runUpdate({
+    root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z'),
+    validate: fixtureValidation,
+  });
   const before = snapshot(root);
   const changed = Buffer.concat([FIXTURE_BYTES, Buffer.from('1100;SATUL NOU;0;1;1017;10;3;1;7;1;RO121;\n')]);
   const result = await runCheck({
     root, fetchImpl: makeFetch({ bytes: changed }), now: clock('2026-11-01T08:00:00.000Z'),
+    validate: fixtureValidation,
   });
   assert.equal(result.ok, false);
   const stale = result.problems.filter(item => item.status === 'stale').map(item => item.path);
@@ -242,13 +291,19 @@ test('check reports changed upstream bytes even when modifiedAt is fixed, and do
 
 test('check reports every missing, stale and extra generated file', async t => {
   const root = makeRoot(t);
-  await runUpdate({ root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z') });
+  await runUpdate({
+    root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z'),
+    validate: fixtureValidation,
+  });
   fs.rmSync(path.join(root, 'data/latest/uat.csv'));
   fs.writeFileSync(path.join(root, 'data/latest/judete.json'), 'STALE\n');
   fs.writeFileSync(path.join(root, 'data/latest/extra.txt'), 'extra\n');
   fs.writeFileSync(path.join(root, 'sources/current/old.csv'), 'old\n');
   const before = snapshot(root);
-  const result = await runCheck({ root, fetchImpl: makeFetch({}), now: clock('2027-01-01T00:00:00.000Z') });
+  const result = await runCheck({
+    root, fetchImpl: makeFetch({}), now: clock('2027-01-01T00:00:00.000Z'),
+    validate: fixtureValidation,
+  });
   assert.equal(result.ok, false);
   assert.deepEqual(result.problems, [
     { path: 'data/latest/extra.txt', status: 'extra' },
@@ -261,7 +316,10 @@ test('check reports every missing, stale and extra generated file', async t => {
 
 test('check on a repository with no generated files reports all of them missing', async t => {
   const root = makeRoot(t);
-  const result = await runCheck({ root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z') });
+  const result = await runCheck({
+    root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z'),
+    validate: fixtureValidation,
+  });
   assert.equal(result.ok, false);
   assert.ok(result.problems.every(item => item.status === 'missing' || item.path === 'sources.yml'));
   assert.equal(result.problems.filter(item => item.status === 'missing').length, 10);
@@ -284,7 +342,8 @@ test('cli main prints totals on success and one error message on failure', async
   const io = { log: line => out.push(line), error: line => err.push(line) };
 
   const okCode = await main(['update'], {
-    root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z'), io,
+    root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z'),
+    validate: fixtureValidation, io,
   });
   assert.equal(okCode, 0);
   assert.equal(err.length, 0);
@@ -293,7 +352,8 @@ test('cli main prints totals on success and one error message on failure', async
   fs.writeFileSync(path.join(root, 'data/latest/judete.json'), 'STALE\n');
   out.length = 0;
   const failCode = await main(['check'], {
-    root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z'), io,
+    root, fetchImpl: makeFetch({}), now: clock('2026-10-19T00:00:00.000Z'),
+    validate: fixtureValidation, io,
   });
   assert.equal(failCode, 1);
   assert.equal(err.length, 1);

@@ -4,15 +4,41 @@ const assert = require('node:assert/strict');
 async function discoverLatest(manifest, fetchImpl = fetch) {
   const config = manifest?.dataset;
   assert.ok(config, 'Configurația dataset lipsește din manifest.');
-  const url = new URL(config.discoveryUrl);
-  url.searchParams.set('fq', `organization:${config.organization}`);
+  const rows = 100;
+  const results = [];
+  let count = null;
 
-  const response = await fetchImpl(url.toString());
-  assert.ok(response.ok, `Descoperirea CKAN a eșuat cu status ${response.status}.`);
-  const payload = await response.json();
-  assert.equal(payload?.success, true, 'Răspunsul CKAN nu indică succes.');
-  const results = payload?.result?.results;
-  assert.ok(Array.isArray(results), 'Răspunsul CKAN nu conține lista de seturi de date.');
+  for (let start = 0; count === null || start < count; start += rows) {
+    const url = new URL(config.discoveryUrl);
+    url.searchParams.set('fq', `organization:${config.organization}`);
+    url.searchParams.set('start', String(start));
+    url.searchParams.set('rows', String(rows));
+
+    const response = await fetchImpl(url.toString());
+    assert.ok(response.ok, `Descoperirea CKAN a eșuat cu status ${response.status}.`);
+    const payload = await response.json();
+    assert.equal(payload?.success, true, 'Răspunsul CKAN nu indică succes.');
+    const page = payload?.result?.results;
+    const pageCount = payload?.result?.count;
+    assert.ok(Array.isArray(page), 'Răspunsul CKAN nu conține lista de seturi de date.');
+    assert.ok(
+      Number.isSafeInteger(pageCount) && pageCount >= 0,
+      'Răspunsul CKAN conține un număr total inconsistent.'
+    );
+    if (count === null) {
+      count = pageCount;
+    } else {
+      assert.equal(pageCount, count, 'Răspunsul CKAN și-a schimbat numărul total între pagini.');
+    }
+
+    const expectedRows = Math.min(rows, count - start);
+    if (page.length !== expectedRows) {
+      throw new Error(
+        `Răspuns CKAN trunchiat la start=${start}: așteptate ${expectedRows} rezultate, primite ${page.length}.`
+      );
+    }
+    results.push(...page);
+  }
 
   const matching = results.flatMap(pkg => {
     const match = new RegExp(config.titlePattern, 'i').exec(pkg.title);

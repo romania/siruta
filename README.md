@@ -2,9 +2,8 @@
 
 Set de date normalizat, validat și reproductibil pentru **SIRUTA** (*Sistemul Informatic al Registrului Unităților Teritorial-Administrative*), publicat oficial de **Institutul Național de Statistică (INS)** pe portalul național de date deschise `data.gov.ro`.
 
-- **Ediția curentă:** `SIRUTA_s1 2026` (an de referință `2026`)
-- **Total înregistrări:** `16.978` (`42` județe + municipiul București, `3.187` UAT-uri, `13.749` localități componente)
-- **SHA-256 sursă oficială:** `f443e49af2f9c9dce8ea515ae53090a18fb476547466b6cd804051424eaf72c6` (`892.897` octeți)
+- **Versiunea și proveniența curente:** consultați [`data/latest/metadata.json`](./data/latest/metadata.json), generat împreună cu datele.
+- **Regulile de descoperire CKAN și sursa rezolvată curentă:** consultați [`sources.yml`](./sources.yml).
 - **Licență date:** [CC BY 4.0](./LICENSE-DATA.md) · **Licență cod:** [WTFPL](./LICENSE-CODE)
 
 > **Relația cu `romania/localitati`:** Acest depozit oferă registrul oficial SIRUTA curent (cu ierarhia completă județ → UAT → localitate și metadate de proveniență INS) și **completează, dar nu înlocuiește** depozitul `romania/localitati`. Aplicațiile care depind de structura specifică din `romania/localitati` pot continua să îl folosească neschimbat.
@@ -13,26 +12,26 @@ Set de date normalizat, validat și reproductibil pentru **SIRUTA** (*Sistemul I
 
 ## Fișiere publicate
 
-| Fișier | Format | Înregistrări | Descriere |
-| --- | --- | ---: | --- |
-| `data/latest/siruta.csv` | CSV (RFC 4180, UTF-8, LF) | 16.978 | Toate înregistrările SIRUTA normalizate, sortate numeric după `siruta` |
-| `data/latest/siruta.json` | JSON (UTF-8, LF) | 16.978 | Toate înregistrările SIRUTA normalizate |
-| `data/latest/judete.csv` | CSV (RFC 4180, UTF-8, LF) | 42 | Nivel 1: cele 41 de județe și Municipiul București (`nivel = 1`) |
-| `data/latest/judete.json` | JSON (UTF-8, LF) | 42 | Nivel 1 în format JSON |
-| `data/latest/uat.csv` | CSV (RFC 4180, UTF-8, LF) | 3.187 | Unități administrativ-teritoriale (`nivel = 2`) și cele 6 sectoare ale Municipiului București (`nivel = 3, tip = 6`) |
-| `data/latest/uat.json` | JSON (UTF-8, LF) | 3.187 | UAT-urile și sectoarele Bucureștiului în format JSON |
-| `data/latest/localitati.csv` | CSV (RFC 4180, UTF-8, LF) | 13.749 | Localități componente și sate (`nivel = 3, tip != 6`) |
-| `data/latest/localitati.json` | JSON (UTF-8, LF) | 13.749 | Localități componente și sate în format JSON |
-| `data/latest/metadata.json` | JSON (UTF-8, LF) | — | Metadate despre ediție, proveniență CKAN/INS, SHA-256, transformări, totaluri și domenii de valori |
-| `sources/current/siruta.csv` | CSV brut INS (`;`, CRLF) | 16.978 | Copia exactă, octet cu octet, a fișierului oficial descărcat de la INS |
-| `sources.yml` | YAML (UTF-8, LF) | — | Manifestul de descoperire CKAN și amprenta ediției curente (`dataset.current`) |
-| `schema.json` | JSON Schema (2020-12) | — | Schema formală de validare a unei înregistrări normalizate |
+| Fișier | Format | Descriere |
+| --- | --- | --- |
+| `data/latest/siruta.csv` | CSV (RFC 4180, UTF-8, LF) | Toate înregistrările SIRUTA normalizate, sortate numeric după `siruta` |
+| `data/latest/siruta.json` | JSON (UTF-8, LF) | Toate înregistrările SIRUTA normalizate |
+| `data/latest/judete.csv` | CSV (RFC 4180, UTF-8, LF) | Nivel 1: județele și Municipiul București (`nivel = 1`) |
+| `data/latest/judete.json` | JSON (UTF-8, LF) | Nivelul județ în format JSON |
+| `data/latest/uat.csv` | CSV (RFC 4180, UTF-8, LF) | Unități administrativ-teritoriale (`nivel = 2`) și sectoarele Municipiului București (`nivel = 3, tip = 6`) |
+| `data/latest/uat.json` | JSON (UTF-8, LF) | UAT-urile și sectoarele Bucureștiului în format JSON |
+| `data/latest/localitati.csv` | CSV (RFC 4180, UTF-8, LF) | Localități componente și sate (`nivel = 3, tip != 6`) |
+| `data/latest/localitati.json` | JSON (UTF-8, LF) | Localități componente și sate în format JSON |
+| `data/latest/metadata.json` | JSON (UTF-8, LF) | Metadate despre ediție, proveniență CKAN/INS, SHA-256, transformări, totaluri și domenii de valori |
+| `sources/current/siruta.csv` | CSV brut INS (`;`, CRLF) | Copia exactă, octet cu octet, a fișierului oficial descărcat de la INS |
+| `sources.yml` | YAML (UTF-8, LF) | Manifestul de descoperire CKAN și amprenta ediției curente (`dataset.current`) |
+| `schema.json` | JSON Schema (2020-12) | Schema formală de validare a unei înregistrări normalizate |
 
 ### Sursa brută vs. exporturile normalizate
 
 - **`sources/current/siruta.csv`** păstrează **exact octeții descărcați** de la INS (separator `;`, terminații de linie CRLF și diacritice cu sedilă `Ş`/`Ţ`), astfel încât suma de control SHA-256 din depozit să corespundă identic cu `data/latest/metadata.json` și `sources.yml`. Fișierul `.gitattributes` marchează `sources/current/**` ca `-text binary` pentru a preveni conversia automată a terminațiilor de linie în Git.
 - **`data/latest/*.{csv,json}`** sunt exporturi normalizate deterministe: codificare UTF-8 validată strict, terminații de linie LF (`\n`), diacritice românești standard în Unicode NFC cu virgulă dedesubt (`Ș`/`ș`, `Ț`/`ț`), spații multiple compactate și sortare numerică ascendentă după codul `siruta`.
-- Câmpul **`url`** din `data/latest/metadata.json` și `sources.yml` stochează **URL-ul oficial stabil al resursei CKAN** selectate la descoperire (`https://data.gov.ro/dataset/.../resource/.../download/...`), nu o adresă temporară de CDN rezultată în urma unei redirecționări HTTP.
+- Câmpul **`url`** din metadatele curente stochează URL-ul oficial al resursei CKAN selectate la descoperire, nu o adresă temporară de CDN rezultată în urma unei redirecționări HTTP.
 
 ---
 
@@ -66,15 +65,15 @@ Toate codurile de identificare și clasificare (`siruta`, `siruta_parinte`, `cod
 
 ## Semantica ierarhiei și a sectoarelor Municipiului București
 
-Cele trei partiții (`judete`, `uat`, `localitati`) formează o **partiție disjunctă și completă** a tabelului `siruta` (`42 + 3.187 + 13.749 = 16.978`):
+Cele trei partiții (`judete`, `uat`, `localitati`) formează o **partiție disjunctă și completă** a tabelului `siruta`:
 
 1. **Nivelul 1 (`judete`, `nivel = 1`, `tip = 40`):**
    - Conține cele 41 de județe și `MUNICIPIUL BUCUREȘTI` (`siruta: "403"`).
    - Toate înregistrările de nivel 1 au `siruta_parinte: "1"` (valoare santinelă INS pentru rădăcina națională).
-2. **Nivelul 2 și sectoarele Bucureștiului (`uat`, 3.187 înregistrări):**
-   - Include toate cele `3.181` de unități administrativ-teritoriale de `nivel = 2` (municipii, orașe, comune și `MUNICIPIUL BUCUREȘTI` cu `siruta: "179132"`, `tip: 9`, `siruta_parinte: "403"`, `lau: "RO_179132"`), al căror părinte este întotdeauna o înregistrare de `nivel = 1`.
+2. **Nivelul 2 și sectoarele Bucureștiului (`uat`):**
+   - Include toate unitățile administrativ-teritoriale de `nivel = 2` (municipii, orașe, comune și `MUNICIPIUL BUCUREȘTI` cu `siruta: "179132"`, `tip: 9`, `siruta_parinte: "403"`, `lau: "RO_179132"`), al căror părinte este întotdeauna o înregistrare de `nivel = 1`.
    - Include de asemenea cele **6 sectoare ale Municipiului București** (`siruta: "179141"` … `"179196"`, `BUCUREȘTI SECTORUL 1` … `6`), care în SIRUTA au `nivel = 3`, `tip = 6` și `siruta_parinte: "179132"`. Deoarece sectoarele funcționează ca subdiviziuni administrativ-teritoriale la nivel de UAT, regula de partiționare le plasează în `uat` (`nivel === 2 || (nivel === 3 && tip === 6)`), nu în `localitati`.
-3. **Nivelul 3 (`localitati`, `nivel = 3 && tip != 6`, 13.749 înregistrări):**
+3. **Nivelul 3 (`localitati`, `nivel = 3 && tip != 6`):**
    - Conține localitățile componente și satele arondate unui UAT de nivel 2 (`siruta_parinte` indică întotdeauna un UAT de `nivel = 2`).
 
 ---
@@ -205,6 +204,6 @@ Comanda `npm run check` efectuează **detecție live a derivei față de sursa o
 
 ## Sursă și licențiere
 
-- **Sursa datelor:** **Institutul Național de Statistică (INS)** — setul de date `SIRUTA_s1 2026` publicat pe `data.gov.ro` (`https://data.gov.ro/dataset/721c9059-5f87-4c79-9854-a1d5c18f58d5/resource/dac903f0-32b5-489a-89e7-2c80d96cf68d/download/siruta_s1_2026.csv`).
+- **Sursa datelor:** **Institutul Național de Statistică (INS)**, prin organizația sa CKAN de pe `data.gov.ro`. Versiunea, identificatorii, URL-ul resursei, suma de control și totalurile curente sunt în [`data/latest/metadata.json`](./data/latest/metadata.json), iar configurația de descoperire și sursa rezolvată sunt în [`sources.yml`](./sources.yml).
 - **Licența datelor (`data/latest/*`, `sources/current/*`):** **Creative Commons Attribution 4.0 International (CC BY 4.0)** — consultați [**LICENSE-DATA.md**](./LICENSE-DATA.md) pentru detalii complete privind atribuirea și transformările aplicate.
 - **Licența codului sursă (`scripts/*`, `test/*`, `schema.json`):** **WTFPL** — consultați [**LICENSE-CODE**](./LICENSE-CODE).

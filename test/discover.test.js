@@ -38,11 +38,11 @@ function dataset(year, suffix = 'a', license = 'CC-BY-4.0', modifiedAt = `${year
   };
 }
 
-function ckanResponse(results) {
+function ckanResponse(results, count = results.length) {
   return new Response(
     JSON.stringify({
       success: true,
-      result: { results },
+      result: { count, results },
     }),
     {
       status: 200,
@@ -53,6 +53,29 @@ function ckanResponse(results) {
 
 function fakeFetch(response) {
   return async () => response;
+}
+
+function unrelated(index) {
+  return {
+    id: `unrelated-${index}`,
+    title: `Alt set de date ${index}`,
+    license_id: 'other',
+    metadata_modified: '2026-09-01T00:00:00',
+    resources: [],
+  };
+}
+
+function pagedFetch(pages) {
+  const calls = [];
+  const fetchImpl = async input => {
+    const url = new URL(input);
+    calls.push(url);
+    const start = Number(url.searchParams.get('start'));
+    assert.ok(pages.has(start), `Pagină CKAN neașteptată: start=${start}`);
+    return ckanResponse(pages.get(start), pages.count);
+  };
+  fetchImpl.calls = calls;
+  return fetchImpl;
 }
 
 test('selects the newest SIRUTA S1 dataset from CKAN', async () => {
@@ -78,6 +101,54 @@ test('selects the newest SIRUTA S1 dataset from CKAN', async () => {
     license: 'CC-BY-4.0',
     size: 892897,
   });
+});
+
+test('paginates package_search and selects a newer dataset from a later page', async () => {
+  const firstPage = [dataset(2026, 'a'), ...Array.from({ length: 99 }, (_, index) => unrelated(index))];
+  const pages = new Map([
+    [0, firstPage],
+    [100, [dataset(2027, 'later')]],
+  ]);
+  pages.count = 101;
+  const fetchImpl = pagedFetch(pages);
+
+  const selected = await discoverLatest(manifest, fetchImpl);
+
+  assert.equal(selected.datasetId, 'dataset-2027-later');
+  assert.deepEqual(
+    fetchImpl.calls.map(url => ({
+      fq: url.searchParams.get('fq'),
+      start: url.searchParams.get('start'),
+      rows: url.searchParams.get('rows'),
+    })),
+    [
+      { fq: 'organization:institutul-national-de-statistica', start: '0', rows: '100' },
+      { fq: 'organization:institutul-national-de-statistica', start: '100', rows: '100' },
+    ]
+  );
+});
+
+test('rejects an equally current ambiguous dataset found on a later page', async () => {
+  const firstPage = [dataset(2026, 'a'), ...Array.from({ length: 99 }, (_, index) => unrelated(index))];
+  const pages = new Map([
+    [0, firstPage],
+    [100, [dataset(2026, 'b')]],
+  ]);
+  pages.count = 101;
+  const fetchImpl = pagedFetch(pages);
+
+  await assert.rejects(discoverLatest(manifest, fetchImpl), /Selecție ambiguă.*2026/);
+  assert.deepEqual(fetchImpl.calls.map(url => url.searchParams.get('start')), ['0', '100']);
+});
+
+test('rejects a truncated CKAN result before selecting a dataset', async () => {
+  const pages = new Map([
+    [0, [dataset(2026, 'a'), ...Array.from({ length: 99 }, (_, index) => unrelated(index))]],
+    [100, []],
+  ]);
+  pages.count = 101;
+
+  await assert.rejects(discoverLatest(manifest, pagedFetch(pages)), /trunchiat|inconsistent/i);
 });
 
 test('rejects two equally current matching datasets', async () => {
