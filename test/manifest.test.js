@@ -10,7 +10,7 @@ test('loads the exact SIRUTA discovery contract', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'siruta-manifest-'));
   fs.writeFileSync(path.join(root, 'sources.yml'), `
 dataset:
-  discovery_url: https://data.gov.ro/api/3/action/package_search
+  discovery_url: https://data.gov.ro/api/3/action/package_search?q=siruta&sort=metadata_modified%20desc
   organization: institutul-national-de-statistica
   title_pattern: ^SIRUTA_s1[ _-](?<year>\\d{4})$
   resource_format: CSV
@@ -18,7 +18,7 @@ dataset:
 `);
   assert.deepEqual(loadManifest(root), {
     dataset: {
-      discoveryUrl: 'https://data.gov.ro/api/3/action/package_search',
+      discoveryUrl: 'https://data.gov.ro/api/3/action/package_search?q=siruta&sort=metadata_modified%20desc',
       organization: 'institutul-national-de-statistica',
       titlePattern: '^SIRUTA_s1[ _-](?<year>\\d{4})$',
       resourceFormat: 'CSV',

@@ -11,7 +11,6 @@ async function discoverLatest(manifest, fetchImpl = fetch) {
 
   for (let start = 0; count === null || start < count; start += rows) {
     const url = new URL(config.discoveryUrl);
-    url.searchParams.set('fq', `organization:${config.organization}`);
     url.searchParams.set('start', String(start));
     url.searchParams.set('rows', String(rows));
 
@@ -48,6 +47,12 @@ async function discoverLatest(manifest, fetchImpl = fetch) {
   const matching = results.flatMap(pkg => {
     const match = new RegExp(config.titlePattern, 'i').exec(pkg.title);
     if (!match) return [];
+    const organization = pkg.organization?.name ?? '<lipsește>';
+    assert.equal(
+      organization,
+      config.organization,
+      `${pkg.title}: organizație CKAN neașteptată ${organization}; așteptată ${config.organization}.`
+    );
     assert.equal(pkg.license_id, config.license, `${pkg.title}: licență neașteptată.`);
     const resources = (pkg.resources || []).filter(item =>
       item.state === 'active' && String(item.format || '').toUpperCase() === config.resourceFormat

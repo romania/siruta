@@ -5,7 +5,7 @@ const { discoverLatest } = require('../scripts/update/discover');
 
 const manifest = {
   dataset: {
-    discoveryUrl: 'https://data.gov.ro/api/3/action/package_search',
+    discoveryUrl: 'https://data.gov.ro/api/3/action/package_search?q=siruta&sort=metadata_modified%20desc',
     organization: 'institutul-national-de-statistica',
     titlePattern: '^SIRUTA_s1[ _-](?<year>\\d{4})$',
     resourceFormat: 'CSV',
@@ -17,6 +17,7 @@ function dataset(year, suffix = 'a', license = 'CC-BY-4.0', modifiedAt = `${year
   return {
     id: `dataset-${year}-${suffix}`,
     title: `SIRUTA_s1 ${year}`,
+    organization: { name: 'institutul-national-de-statistica' },
     license_id: license,
     metadata_modified: modifiedAt,
     resources: [
@@ -117,13 +118,27 @@ test('paginates package_search and selects a newer dataset from a later page', a
   assert.equal(selected.datasetId, 'dataset-2027-later');
   assert.deepEqual(
     fetchImpl.calls.map(url => ({
-      fq: url.searchParams.get('fq'),
+      q: url.searchParams.get('q'),
+      sort: url.searchParams.get('sort'),
+      hasFq: url.searchParams.has('fq'),
       start: url.searchParams.get('start'),
       rows: url.searchParams.get('rows'),
     })),
     [
-      { fq: 'organization:institutul-national-de-statistica', start: '0', rows: '100' },
-      { fq: 'organization:institutul-national-de-statistica', start: '100', rows: '100' },
+      {
+        q: 'siruta',
+        sort: 'metadata_modified desc',
+        hasFq: false,
+        start: '0',
+        rows: '100',
+      },
+      {
+        q: 'siruta',
+        sort: 'metadata_modified desc',
+        hasFq: false,
+        start: '100',
+        rows: '100',
+      },
     ]
   );
 });
@@ -157,7 +172,6 @@ test('reports the CKAN operation, request URL and nested cause when fetch reject
   });
   const rejection = new TypeError('fetch failed', { cause: nested });
   const expectedUrl = new URL(manifest.dataset.discoveryUrl);
-  expectedUrl.searchParams.set('fq', `organization:${manifest.dataset.organization}`);
   expectedUrl.searchParams.set('start', '0');
   expectedUrl.searchParams.set('rows', '100');
 
@@ -174,6 +188,16 @@ test('reports the CKAN operation, request URL and nested cause when fetch reject
       assert.equal(error.cause, rejection);
       return true;
     }
+  );
+});
+
+test('rejects a title-matching SIRUTA S1 package from the wrong organization', async () => {
+  const wrongOrganization = dataset(2027, 'wrong-org');
+  wrongOrganization.organization = { name: 'alta-organizatie' };
+
+  await assert.rejects(
+    discoverLatest(manifest, fakeFetch(ckanResponse([wrongOrganization]))),
+    /organizație.*alta-organizatie.*institutul-national-de-statistica/i
   );
 });
 

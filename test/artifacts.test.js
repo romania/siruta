@@ -14,7 +14,7 @@ const FIXTURE = path.join(__dirname, 'fixtures', 'siruta-small.csv');
 const SOURCES_YML = [
   '# Surse editabile; câmpul dataset.current este generat.',
   'dataset:',
-  '  discovery_url: https://data.gov.ro/api/3/action/package_search',
+  '  discovery_url: https://data.gov.ro/api/3/action/package_search?q=siruta&sort=metadata_modified%20desc',
   '  organization: institutul-national-de-statistica',
   '  title_pattern: ^SIRUTA_s1[ _-](?<year>\\d{4})$',
   '  resource_format: CSV',

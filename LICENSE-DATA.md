@@ -12,7 +12,7 @@ Acest depozit separă explicit regimul juridic al datelor de cel al codului surs
 ## Proveniența oficială a datelor
 
 - **Instituția sursă:** Institutul Național de Statistică (INS) — organizația `institutul-national-de-statistica` pe portalul național `data.gov.ro`
-- **Descoperire:** API-ul CKAN `package_search`, filtrat după organizația INS și regulile stabile din [`sources.yml`](./sources.yml)
+- **Descoperire:** fluxul CKAN stabil `package_search?q=siruta&sort=metadata_modified desc`; fiecare candidat SIRUTA este verificat explicit ca aparținând organizației INS, conform regulilor din [`sources.yml`](./sources.yml)
 - **Versiunea și resursa oficială curente:** identificatorii CKAN, URL-ul resursei, data modificării, dimensiunea și SHA-256 sunt în [`data/latest/metadata.json`](./data/latest/metadata.json); sursa rezolvată este oglindită în [`sources.yml`](./sources.yml)
 - **Licența declarată de sursă:** Creative Commons Attribution 4.0 International (`CC BY 4.0`)
 - **Textul complet al licenței CC BY 4.0:** https://creativecommons.org/licenses/by/4.0/

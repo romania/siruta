@@ -15,7 +15,7 @@ const CLI = path.join(__dirname, '..', 'scripts', 'update', 'cli.js');
 const SOURCES_YML = [
   '# Surse editabile; câmpul dataset.current este generat.',
   'dataset:',
-  '  discovery_url: https://data.gov.ro/api/3/action/package_search',
+  '  discovery_url: https://data.gov.ro/api/3/action/package_search?q=siruta&sort=metadata_modified%20desc',
   '  organization: institutul-national-de-statistica',
   '  title_pattern: ^SIRUTA_s1[ _-](?<year>\\d{4})$',
   '  resource_format: CSV',
@@ -45,6 +45,7 @@ function makeFetch(state) {
           results: [{
             id: 'dataset-2026',
             title: 'SIRUTA_s1 2026',
+            organization: { name: 'institutul-national-de-statistica' },
             license_id: 'CC-BY-4.0',
             metadata_modified: state.modifiedAt ?? MODIFIED_AT,
             resources: [{ id: 'resource-2026', format: 'CSV', state: 'active', url: CSV_URL, size: 1 }],

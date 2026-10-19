@@ -194,7 +194,7 @@ npm run update
 ### Despre `npm run check` (detecție live a modificărilor în amonte)
 
 Comanda `npm run check` efectuează **detecție live a derivei față de sursa oficială (live upstream drift detection)**:
-1. Interoghează API-ul CKAN de pe `data.gov.ro` pentru organizația `institutul-national-de-statistica` și selectează cea mai recentă ediție `SIRUTA_s1`.
+1. Interoghează fluxul CKAN stabil `package_search?q=siruta&sort=metadata_modified desc`, verifică explicit organizația `institutul-national-de-statistica` pentru fiecare candidat `SIRUTA_s1` și selectează cea mai recentă ediție validă.
 2. Descarcă fișierul CSV oficial în memorie, îl normalizează, validează toate invariantele (`schema.json`, unicitate, integritatea ierarhiei părinte-copil, partiții) și regenerează artefactele într-un director temporar (`.tmp/check-<pid>`).
 3. Compară octet cu octet fișierele din depozit (`data/latest/*`, `sources/current/siruta.csv`, `sources.yml`) cu cele regenerate, fără a modifica niciun fișier urmărit de Git.
 
