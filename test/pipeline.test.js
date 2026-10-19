@@ -7,7 +7,7 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 const YAML = require('yaml');
-const { runCheck, runUpdate } = require('../scripts/update/pipeline');
+const { runCheck, runCheckOffline, runUpdate } = require('../scripts/update/pipeline');
 const { validateDataset } = require('../scripts/update/validate');
 
 const FIXTURE_BYTES = fs.readFileSync(path.join(__dirname, 'fixtures', 'siruta-small.csv'));
@@ -30,6 +30,19 @@ function makeRoot(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'siruta-pipeline-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.writeFileSync(path.join(root, 'sources.yml'), SOURCES_YML);
+  return root;
+}
+
+function makeProductionRoot(t) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'siruta-offline-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.copyFileSync(path.join(__dirname, '..', 'sources.yml'), path.join(root, 'sources.yml'));
+  fs.cpSync(path.join(__dirname, '..', 'sources', 'current'), path.join(root, 'sources', 'current'), {
+    recursive: true,
+  });
+  fs.cpSync(path.join(__dirname, '..', 'data', 'latest'), path.join(root, 'data', 'latest'), {
+    recursive: true,
+  });
   return root;
 }
 
@@ -326,13 +339,111 @@ test('check on a repository with no generated files reports all of them missing'
   assert.equal(result.problems.filter(item => item.status === 'missing').length, 10);
 });
 
+test('offline check uses only committed inputs and preserves every byte and mtime', async t => {
+  const root = makeProductionRoot(t);
+  const before = snapshot(root);
+  const result = await runCheckOffline({
+    root,
+    fetchImpl() {
+      throw new Error('fetch nu trebuie apelat');
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.problems, []);
+  const committedTotal = JSON.parse(read(root, 'data/latest/metadata.json')).totaluri.toate;
+  assert.equal(result.report.totaluri.toate, committedTotal);
+  assert.deepEqual(snapshot(root), before);
+  assert.equal(fs.existsSync(path.join(root, '.tmp')), false);
+});
+
+test('offline check rejects tampered raw bytes, declared SHA and declared size', async t => {
+  const rawRoot = makeProductionRoot(t);
+  const rawPath = path.join(rawRoot, 'sources', 'current', 'siruta.csv');
+  const tampered = fs.readFileSync(rawPath);
+  tampered[100] ^= 1;
+  fs.writeFileSync(rawPath, tampered);
+  await assert.rejects(runCheckOffline({ root: rawRoot }), /SHA-256.*sursei brute/i);
+
+  const shaRoot = makeProductionRoot(t);
+  const shaSourcesPath = path.join(shaRoot, 'sources.yml');
+  const shaSources = YAML.parse(fs.readFileSync(shaSourcesPath, 'utf8'));
+  shaSources.dataset.current.sha256 = '0'.repeat(64);
+  fs.writeFileSync(shaSourcesPath, YAML.stringify(shaSources));
+  await assert.rejects(runCheckOffline({ root: shaRoot }), /SHA-256.*sursei brute/i);
+
+  const sizeRoot = makeProductionRoot(t);
+  const sizeSourcesPath = path.join(sizeRoot, 'sources.yml');
+  const sizeSources = YAML.parse(fs.readFileSync(sizeSourcesPath, 'utf8'));
+  sizeSources.dataset.current.bytes += 1;
+  fs.writeFileSync(sizeSourcesPath, YAML.stringify(sizeSources));
+  await assert.rejects(runCheckOffline({ root: sizeRoot }), /dimensiunea.*sursei brute/i);
+});
+
+test('offline check rejects sources.yml.current and metadata provenance drift', async t => {
+  const root = makeProductionRoot(t);
+  const sourcesPath = path.join(root, 'sources.yml');
+  const sources = YAML.parse(fs.readFileSync(sourcesPath, 'utf8'));
+  sources.dataset.current.resource_id = 'resource-tampered';
+  fs.writeFileSync(sourcesPath, YAML.stringify(sources));
+
+  await assert.rejects(runCheckOffline({ root }), /paritate.*metadata/i);
+});
+
+test('offline check reports stale, missing and extra generated artifacts', async t => {
+  const root = makeProductionRoot(t);
+  fs.writeFileSync(path.join(root, 'data', 'latest', 'judete.json'), 'STALE\n');
+  fs.rmSync(path.join(root, 'data', 'latest', 'uat.csv'));
+  fs.writeFileSync(path.join(root, 'data', 'latest', 'extra.txt'), 'extra\n');
+
+  const result = await runCheckOffline({
+    root,
+    fetchImpl() {
+      throw new Error('fetch nu trebuie apelat');
+    },
+  });
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.problems, [
+    { path: 'data/latest/extra.txt', status: 'extra' },
+    { path: 'data/latest/judete.json', status: 'stale' },
+    { path: 'data/latest/uat.csv', status: 'missing' },
+  ]);
+});
+
 test('cli rejects unsupported arguments with usage and exit code 1', () => {
   for (const args of [['update', '--help'], [], ['bogus'], ['update', 'check']]) {
     const run = spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8' });
     assert.equal(run.status, 1, args.join(' '));
-    assert.match(run.stderr, /Utilizare: node scripts\/update\/cli\.js \[update\|check\]/);
+    assert.match(run.stderr, /Utilizare: node scripts\/update\/cli\.js \[update\|check\|check-offline\]/);
     assert.equal(run.stdout, '');
   }
+});
+
+test('cli check-offline succeeds without fetch and reports stale artifacts', async t => {
+  const { main } = require('../scripts/update/cli');
+  const root = makeProductionRoot(t);
+  const out = [];
+  const err = [];
+  const deps = {
+    root,
+    fetchImpl() {
+      throw new Error('fetch nu trebuie apelat');
+    },
+    io: { log: line => out.push(line), error: line => err.push(line) },
+  };
+
+  assert.equal(await main(['check-offline'], deps), 0);
+  const committedTotal = JSON.parse(read(root, 'data/latest/metadata.json')).totaluri.toate;
+  assert.ok(out.join('\n').includes(String(committedTotal)));
+  assert.deepEqual(err, []);
+
+  fs.writeFileSync(path.join(root, 'data', 'latest', 'judete.json'), 'STALE\n');
+  out.length = 0;
+  assert.equal(await main(['check-offline'], deps), 1);
+  assert.equal(err.length, 1);
+  assert.match(err[0], /data\/latest\/judete\.json/);
+  assert.deepEqual(out, []);
 });
 
 test('cli main prints totals on success and one error message on failure', async t => {

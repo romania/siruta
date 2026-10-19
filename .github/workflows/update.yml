@@ -21,9 +21,10 @@ jobs:
       - name: Save previous metadata
         run: cp data/latest/metadata.json "$RUNNER_TEMP/metadata-before.json"
       - run: npm test
+      - run: npm run check:offline
       - run: npm run update
       - run: npm test
-      - run: npm run check
+      - run: npm run check:offline
       - name: Detect changes
         id: diff
         run: |
@@ -70,7 +71,7 @@ jobs:
             `- Totaluri anterioare: ${t(before)}`,
             `- Totaluri noi: ${t(after)}`,
             '',
-            'Verificat în workflow: `npm test`, `npm run update`, `npm test`, `npm run check`.',
+            'Verificat în workflow: `npm test`, `npm run check:offline`, `npm run update`, `npm test`, `npm run check:offline`.',
             '',
           ].join('\n'));
           NODE

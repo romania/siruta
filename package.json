@@ -6,6 +6,7 @@
   "scripts": {
     "update": "node scripts/update/cli.js update",
     "check": "node scripts/update/cli.js check",
+    "check:offline": "node scripts/update/cli.js check-offline",
     "test": "node --test"
   },
   "engines": {

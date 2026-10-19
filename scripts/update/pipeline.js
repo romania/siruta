@@ -1,6 +1,9 @@
 'use strict';
+const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const nodeFs = require('node:fs');
 const path = require('node:path');
+const { isDeepStrictEqual } = require('node:util');
 const YAML = require('yaml');
 const { buildArtifacts } = require('./artifacts');
 const { discoverLatest } = require('./discover');
@@ -53,6 +56,68 @@ async function prepare({ root, fetchImpl, now, validate, fs }) {
     url: source.url,
     modifiedAt: source.modifiedAt,
     downloadedAt,
+    size: bytes.length,
+    sha256,
+    bytes,
+    report,
+    sourcesYml,
+  });
+  return { artifacts, report };
+}
+
+function assertCurrentMetadataParity(current, metadata) {
+  const expected = {
+    title: metadata.editie,
+    year: metadata.an_referinta,
+    dataset_id: metadata.sursa?.dataset_id,
+    resource_id: metadata.sursa?.resource_id,
+    url: metadata.sursa?.url,
+    license: metadata.sursa?.license,
+    license_url: metadata.sursa?.license_url,
+    modified_at: metadata.sursa?.modified_at,
+    downloaded_at: metadata.sursa?.downloaded_at,
+    bytes: metadata.sursa?.bytes,
+    sha256: metadata.sursa?.sha256,
+    transformari: metadata.transformari,
+  };
+  for (const [field, value] of Object.entries(expected)) {
+    if (!isDeepStrictEqual(current[field], value)) {
+      throw new Error(`Paritate sources.yml.current/metadata invalidă pentru ${field}.`);
+    }
+  }
+}
+
+function prepareOffline({ root, validate, fs }) {
+  const sourcesYml = fs.readFileSync(path.join(root, SOURCES_FILE), 'utf8');
+  const current = existingCurrent(sourcesYml);
+  assert.ok(current, 'sources.yml trebuie să conțină dataset.current pentru verificarea offline.');
+
+  const bytes = fs.readFileSync(path.join(root, 'sources/current/siruta.csv'));
+  assert.equal(
+    bytes.length,
+    current.bytes,
+    `Dimensiunea sursei brute nu corespunde sources.yml.current.bytes (${bytes.length} != ${current.bytes}).`
+  );
+  const sha256 = crypto.createHash('sha256').update(bytes).digest('hex');
+  assert.equal(
+    sha256,
+    current.sha256,
+    `SHA-256 al sursei brute nu corespunde sources.yml.current.sha256 (${sha256} != ${current.sha256}).`
+  );
+
+  const metadata = JSON.parse(fs.readFileSync(path.join(root, 'data/latest/metadata.json'), 'utf8'));
+  assertCurrentMetadataParity(current, metadata);
+
+  const records = normalizeSIRUTA(bytes);
+  const report = validate(records);
+  const artifacts = buildArtifacts(records, {
+    title: current.title,
+    year: current.year,
+    datasetId: current.dataset_id,
+    resourceId: current.resource_id,
+    url: current.url,
+    modifiedAt: current.modified_at,
+    downloadedAt: current.downloaded_at,
     size: bytes.length,
     sha256,
     bytes,
@@ -138,12 +203,11 @@ function listFiles(fs, root, relativeDir) {
   return found;
 }
 
-async function runCheck(options) {
-  const resolved = resolveOptions(options);
+async function runPreparedCheck(resolved, prepareImpl, stageName) {
   const { root, fs } = resolved;
-  const { artifacts, report } = await prepare(resolved);
+  const { artifacts, report } = await prepareImpl(resolved);
 
-  const stage = path.join(root, '.tmp', `check-${process.pid}`);
+  const stage = path.join(root, '.tmp', `${stageName}-${process.pid}`);
   const problems = [];
   try {
     fs.rmSync(stage, { recursive: true, force: true });
@@ -169,4 +233,12 @@ async function runCheck(options) {
   return { ok: problems.length === 0, problems, report };
 }
 
-module.exports = { runUpdate, runCheck };
+async function runCheck(options) {
+  return runPreparedCheck(resolveOptions(options), prepare, 'check');
+}
+
+async function runCheckOffline(options) {
+  return runPreparedCheck(resolveOptions(options), prepareOffline, 'check-offline');
+}
+
+module.exports = { runUpdate, runCheck, runCheckOffline };

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 'use strict';
 const path = require('node:path');
-const { runCheck, runUpdate } = require('./pipeline');
+const { runCheck, runCheckOffline, runUpdate } = require('./pipeline');
 
-const USAGE = 'Utilizare: node scripts/update/cli.js [update|check]';
+const USAGE = 'Utilizare: node scripts/update/cli.js [update|check|check-offline]';
 
 function formatTotals(report) {
   const { toate, judete, uat, localitati } = report.totaluri;
@@ -13,7 +13,7 @@ function formatTotals(report) {
 async function main(argv, deps = {}) {
   const io = deps.io ?? { log: console.log, error: console.error };
   const command = argv.length === 1 ? argv[0] : undefined;
-  if (command !== 'update' && command !== 'check') {
+  if (command !== 'update' && command !== 'check' && command !== 'check-offline') {
     io.error(USAGE);
     return 1;
   }
@@ -31,7 +31,8 @@ async function main(argv, deps = {}) {
       io.log(formatTotals(report));
       return 0;
     }
-    const { ok, problems, report } = await runCheck(options);
+    const check = command === 'check-offline' ? runCheckOffline : runCheck;
+    const { ok, problems, report } = await check(options);
     if (!ok) {
       const lines = problems.map(item => `  - ${item.status}: ${item.path}`);
       io.error(`Artefactele generate nu sunt la zi:\n${lines.join('\n')}`);

@@ -184,21 +184,36 @@ npm ci
 # 2. Rularea suitei de teste unitare și de integrare
 npm test
 
-# 3. Verificarea sincronizării cu sursa oficială (fără modificarea arborelui de lucru)
+# 3. Verificarea reproductibilității numai din fișierele comise (poarta CI)
+npm run check:offline
+
+# 4. Verificarea live a derivei față de sursa oficială
 npm run check
 
-# 4. Descoperirea, descărcarea, validarea și actualizarea atomică a artefactelor
+# 5. Descoperirea, descărcarea, validarea și actualizarea atomică a artefactelor
 npm run update
 ```
 
-### Despre `npm run check` (detecție live a modificărilor în amonte)
+### `npm run check:offline` — poarta deterministă de reproductibilitate și CI
+
+`npm run check:offline` nu accesează rețeaua. Folosește exclusiv `sources/current/siruta.csv` și proveniența `dataset.current` din `sources.yml` pentru a:
+
+1. verifica dimensiunea și SHA-256 ale sursei brute;
+2. parsa și valida strict registrul complet;
+3. regenera determinist toate artefactele;
+4. verifica paritatea dintre `sources.yml.current` și `data/latest/metadata.json`;
+5. compara numele și octeții tuturor fișierelor generate, fără a modifica fișiere urmărite de Git.
+
+Workflow-ul de validare pentru `push` și `pull_request` folosește această comandă, astfel încât rezultatul CI să nu depindă de accesibilitatea `data.gov.ro`.
+
+### `npm run check` — verificarea live a modificărilor în amonte
 
 Comanda `npm run check` efectuează **detecție live a derivei față de sursa oficială (live upstream drift detection)**:
 1. Interoghează fluxul CKAN stabil `package_search?q=siruta&sort=metadata_modified desc`, verifică explicit organizația `institutul-national-de-statistica` pentru fiecare candidat `SIRUTA_s1` și selectează cea mai recentă ediție validă.
 2. Descarcă fișierul CSV oficial în memorie, îl normalizează, validează toate invariantele (`schema.json`, unicitate, integritatea ierarhiei părinte-copil, partiții) și regenerează artefactele într-un director temporar (`.tmp/check-<pid>`).
 3. Compară octet cu octet fișierele din depozit (`data/latest/*`, `sources/current/siruta.csv`, `sources.yml`) cu cele regenerate, fără a modifica niciun fișier urmărit de Git.
 
-> **Notă importantă:** Deoarece `npm run check` verifică live sursa din amonte, comanda **poate eșua dacă portalul `data.gov.ro` este indisponibil temporar** sau dacă INS a publicat o ediție nouă ori a modificat fișierul CSV oficial (caz în care trebuie rulat `npm run update` și revizuite modificările).
+> **Notă importantă:** Deoarece `npm run check` verifică live sursa din amonte, comanda **poate eșua dacă portalul `data.gov.ro` nu este accesibil din mediul curent** sau dacă INS a publicat o ediție nouă ori a modificat fișierul CSV oficial. Workflow-ul programat de actualizare deține detecția live a derivei: rulează mai întâi verificarea offline, apoi `npm run update`, testele și încă o verificare offline. O schimbare validă este publicată pentru revizuire prin pull request.
 
 ---
 
