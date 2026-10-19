@@ -159,11 +159,22 @@ test('metadata carries provenance, the exact download checksum, and validation r
   assert.deepEqual(metadata.transformari, [
     'decodare UTF-8 strictă',
     'Unicode NFC și înlocuire Ș/Ț cu virgulă',
+    'eliminare spații marginale și compactare spații repetate',
     'coduri păstrate ca șiruri',
     'sortare numerică după cod SIRUTA',
   ]);
   assert.deepEqual(metadata.totaluri, { toate: 5, judete: 1, uat: 2, localitati: 2 });
   assert.deepEqual(metadata.domenii, { tip: [1, 6, 9, 10, 40], nivel: [1, 2, 3], mediu: [0, 1] });
+});
+
+test('transformari in metadata.json and sources.yml include trimming and repeated-whitespace collapse', () => {
+  const { records, provenance } = setup();
+  const artifacts = buildArtifacts(records, provenance);
+  const metadata = JSON.parse(artifacts.get('data/latest/metadata.json'));
+  const sources = YAML.parse(artifacts.get('sources.yml').toString('utf8'));
+  const expected = 'eliminare spații marginale și compactare spații repetate';
+  assert.ok(metadata.transformari.includes(expected));
+  assert.ok(sources.dataset.current.transformari.includes(expected));
 });
 
 test('committed source copy is the exact downloaded bytes', () => {

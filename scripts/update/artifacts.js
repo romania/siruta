@@ -24,6 +24,7 @@ const LICENSE_URL = 'https://creativecommons.org/licenses/by/4.0/';
 const TRANSFORMATIONS = [
   'decodare UTF-8 strictă',
   'Unicode NFC și înlocuire Ș/Ț cu virgulă',
+  'eliminare spații marginale și compactare spații repetate',
   'coduri păstrate ca șiruri',
   'sortare numerică după cod SIRUTA',
 ];
